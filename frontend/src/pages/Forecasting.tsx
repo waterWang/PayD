@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   CartesianGrid,
   Line,
@@ -67,6 +67,11 @@ export default function Forecasting() {
   const { notifyError, notifySuccess } = useNotification();
   const { socket, connected, subscribeToOrganization, unsubscribeFromOrganization } = useSocket();
 
+  // Keep the latest forecast in a ref so effect cleanups never read a stale
+  // (initial render) value — the previous cleanup captured `forecast === null`
+  // and therefore never unsubscribed, leaking the WebSocket subscription.
+  const forecastRef = useRef<ForecastResponse | null>(null);
+
   useEffect(() => {
     const load = async () => {
       setIsLoading(true);
@@ -77,6 +82,7 @@ export default function Forecasting() {
 
         const f = await getForecast(monthsForward);
         setForecast(f);
+        forecastRef.current = f;
 
         if (connected && f?.organizationId) {
           subscribeToOrganization(f.organizationId);
@@ -91,8 +97,9 @@ export default function Forecasting() {
     void load();
 
     return () => {
-      if (forecast?.organizationId && connected) {
-        unsubscribeFromOrganization(forecast.organizationId);
+      const orgId = forecastRef.current?.organizationId;
+      if (orgId && connected) {
+        unsubscribeFromOrganization(orgId);
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
