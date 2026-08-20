@@ -51,7 +51,7 @@ export default function CashFlowForecast() {
 
   const loadForecast = useCallback(async () => {
     if (!params.distributionAccount || !params.assetIssuer) {
-      notifyError('Please provide distribution account and asset issuer');
+      // Silently skip on first mount — the user hasn't filled in params yet
       return;
     }
 
